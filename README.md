@@ -32,7 +32,7 @@ To get started, clone this GitPulse repository and install the dependencies.
 
 Clone the GitPulse repository using git:
 
-
+```bash
 git clone https://github.com/PriyalSengar01/GitPulse
 cd GitPulse
 Install dependencies with this command:
@@ -62,4 +62,4 @@ Special thanks to the GitHub API for providing the data used in this project.
 css
 Copy code
 
-Feel free to adjust the formatting or content as needed!
+Feel free to use this markdown code for your GitPulse project!
