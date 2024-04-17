@@ -1,48 +1,57 @@
 import React, { useState, useEffect } from 'react';
-import { useParams } from 'react-router-dom';
-import {
-  Box,
-  Image,
-  Text,
-  Link,
-  Input,
-  Select,
-  Grid,
-  GridItem,
-  Fade,
-  Badge,
-  Container,
-  Heading,
-} from '@chakra-ui/react';
+import { useParams, useNavigate } from 'react-router-dom';
+import { Box, Image, Text, Link, Input, Select, Grid, GridItem, Button, Fade, Heading, Badge } from '@chakra-ui/react';
+import ViewRepo from './ViewRepo'; // Import your ViewRepo component
 
 function About() {
   const { username } = useParams();
   const [userData, setUserData] = useState({});
   const [repos, setRepos] = useState([]);
   const [searchText, setSearchText] = useState('');
-  const [improvementTips, setImprovementTips] = useState([]);
+  const [selectedRepo, setSelectedRepo] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const navigate = useNavigate();
+  const authToken = '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'; // Replace 'your_auth_token_here' with your actual GitHub personal access token
 
   useEffect(() => {
     if (!username) return;
 
-    fetch(`https://api.github.com/users/${username}`)
+    fetch(`https://api.github.com/users/${username}`, {
+      headers: {
+        Authorization: `token ${authToken}`,
+      },
+    })
       .then((res) => res.json())
       .then((data) => {
         setUserData(data);
-
-        // Delay the loading of profile improvement tips by 2 seconds
-        setTimeout(() => {
-          const tips = getProfileImprovementTips(data);
-          setImprovementTips(tips);
-        }, 2000);
+      })
+      .catch((error) => {
+        console.error('Error fetching user data:', error);
       });
 
-    fetch(`https://api.github.com/users/${username}/repos`)
-      .then((res) => res.json())
+    fetch(`https://api.github.com/users/${username}/repos`, {
+      headers: {
+        Authorization: `token ${authToken}`,
+      },
+    })
+      .then((res) => {
+        if (!res.ok) {
+          throw new Error('Failed to fetch repositories');
+        }
+        return res.json();
+      })
       .then((data) => {
+        if (!Array.isArray(data)) {
+          throw new Error('Invalid data format: repositories should be an array');
+        }
         setRepos(data);
+        setLoading(false); // Set loading to false once data is fetched
+      })
+      .catch((error) => {
+        console.error('Error fetching repositories:', error);
+        setLoading(false); // Set loading to false if there's an error
       });
-  }, [username]);
+  }, [username, authToken]);
 
   const sortRepos = (sortBy) => {
     const sortedRepos = [...repos].sort((a, b) => {
@@ -60,6 +69,29 @@ function About() {
       }
     });
     setRepos(sortedRepos);
+  };
+
+  const handleClick3 = (username, repoName) => {
+    // Send multiple props using navigate
+    navigate(`/Graph/${username}/${repoName}`, {
+      state: {
+        username: username,
+        repoName: repoName,
+        // Add more props as needed
+      }
+    });
+  };
+
+
+  const handleClick2 = (username, repoName) => {
+    // Send multiple props using navigate
+    navigate(`/Contributor/${username}/${repoName}`, {
+      state: {
+        username: username,
+        repoName: repoName,
+        // Add more props as needed
+      }
+    });
   };
 
   const handleSearch = (event) => {
@@ -110,78 +142,113 @@ function About() {
     return tips;
   }
 
+  const improvementTips = getProfileImprovementTips(userData);
+
+  const handleClick = (repoName) => {
+    setSelectedRepo(repoName); // Set the selected repository
+  };
+
   return (
-    <Container maxW="container.xl" p="4">
-      <Box textAlign="center" mb="8">
-        <Image src={userData.avatar_url} alt="User Avatar" boxSize="150px" borderRadius="full" mx="auto" />
-        <Heading as="h1" size="xl" mt="4">{userData.name}</Heading>
-        <Text fontSize="lg" color="gray.600" mt="2">{userData.bio}</Text>
-        <Text fontSize="sm" mt="2">Followers: {userData.followers} | Following: {userData.following}</Text>
-        <Text fontSize="sm">Public Repositories: {userData.public_repos} | Location: {userData.location}</Text>
-        {userData.blog && (
-          <Text fontSize="sm">Website: <Link href={userData.blog} color="blue.500">{userData.blog}</Link></Text>
-        )}
-      </Box>
-      <Fade in={improvementTips.length > 0}>
-        <Box mt="4">
-          <Heading as="h2" size="lg" mb="2">Profile Improvement Tips:</Heading>
-          <Grid templateColumns="  repeat(auto-fill, minmax(200px, 1fr))" gap="4">
-            {improvementTips.map((tip, index) => (
-              <Fade key={index} in>
-                <Box p="3" borderWidth="1px" borderRadius="md" boxShadow="md">
-                  <Badge variant="subtle" colorScheme="green" mb="2">Tip {index + 1}</Badge>
-                  <Text>{tip}</Text>
-                </Box>
-              </Fade>
-            ))}
-          </Grid>
-        </Box>
-      </Fade>
-      <Box mt="4">
-        <Heading as="h2" size="lg" mb="2">Repositories:</Heading>
-        <Input
-          type="text"
-          placeholder="Search Repositories"
-          onChange={handleSearch}
-          border="1px"
-          borderColor="gray.300"
-          borderRadius="md"
-          p="2"
-          mt="2"
-          w="full"
-          maxW="md"
-          mx="auto"
-        />
-        <Select
-          onChange={(e) => sortRepos(e.target.value)}
-          mt="2"
-          p="2"
-          borderRadius="md"
-          border="1px"
-          borderColor="gray.300"
-          w="full"
-          maxW="md"
-          mx="auto"
-        >
-          <option value="name">Sort by Name</option>
-          <option value="stars">Sort by Stars</option>
-          <option value="forks">Sort by Forks</option>
-          <option value="open_issues">Sort by Open Issues</option>
-        </Select>
-        <Grid templateColumns="repeat(auto-fill, minmax(250px, 1fr))" gap="4" mt="4">
-          {filteredRepos.map((repo) => (
-            <GridItem key={repo.id} bg="white" boxShadow="md" p="4" borderRadius="md">
-              <Link href={repo.html_url} color="blue.500" fontWeight="semibold" fontSize="lg">{repo.name}</Link>
-              <Text color="gray.600" fontSize="sm">{repo.description}</Text>
-              <Text fontSize="sm">Stars: {repo.stargazers_count}</Text>
-              <Text fontSize="sm">Forks: {repo.forks_count}</Text>
-              <Text fontSize="sm">Open Issues: {repo.open_issues_count}</Text>
-            </GridItem>
-          ))}
-        </Grid>
-      </Box>
-    </Container>
+    <Box maxW="container.xl" mx="auto" p="4">
+      {loading ? (
+        <Text>Loading...</Text>
+      ) : (
+        <>
+          <Box textAlign="center" mb="8">
+            <Image src={userData.avatar_url} alt="User Avatar" boxSize="150px" borderRadius="full" mx="auto" />
+            <Text fontSize="3xl" fontWeight="bold" mt="4">{userData.name}</Text>
+            <Text fontSize="lg" color="gray.600">{userData.bio}</Text>
+            <Text fontSize="sm">Followers: {userData.followers} | Following: {userData.following}</Text>
+            <Text fontSize="sm">Public Repositories: {userData.public_repos} | Location: {userData.location}</Text>
+            {userData.blog && (
+              <Text fontSize="sm">Website: <Link href={userData.blog} color="blue.500">{userData.blog}</Link></Text>
+            )}
+          </Box>
+          <Fade in={improvementTips.length > 0}>
+            <Box mt="4">
+              <Heading as="h2" size="lg" mb="2">Profile Improvement Tips:</Heading>
+              <Grid templateColumns="repeat(auto-fill, minmax(200px, 1fr))" gap="4">
+                {improvementTips.map((tip, index) => (
+                  <Fade key={index} in>
+                    <Box p="3" borderWidth="1px" borderRadius="md" boxShadow="md">
+                      <Badge variant="subtle" colorScheme="green" mb="2">Tip {index + 1}</Badge>
+                      <Text>{tip}</Text>
+                    </Box>
+                  </Fade>
+                ))}
+              </Grid>
+            </Box>
+          </Fade>
+          {selectedRepo ? (
+            <ViewRepo username={username} repoName={selectedRepo} />
+          ) : (
+            <Box>
+              <Text fontSize="xl" fontWeight="semibold">Repositories:</Text>
+              <Input
+                type="text"
+                placeholder="Search Repositories"
+                onChange={handleSearch}
+                border="1px"
+                borderColor="gray.300"
+                borderRadius="md"
+                p="2"
+                mt="2"
+                w="full"
+                maxW="md"
+                mx="auto"
+              />
+              <Select
+                onChange={(e) => sortRepos(e.target.value)}
+                mt="2"
+                p="2"
+                borderRadius="md"
+                border="1px"
+                borderColor="gray.300"
+                w="full"
+                maxW="md"
+                mx="auto"
+              >
+                <option value="name">Sort by Name</option>
+                <option value="stars">Sort by Stars</option>
+                <option value="forks">Sort by Forks</option>
+                <option value="open_issues">Sort by Open Issues</option>
+              </Select>
+              <Grid
+                templateColumns="repeat(auto-fill, minmax(250px, 1fr))"
+                gap="4"
+                mt="4"
+              >
+                {filteredRepos.map((repo) => (
+                  <GridItem
+                    key={repo.id}
+                    bg="white"
+                    boxShadow="md"
+                    p="4"
+                    borderRadius="md"
+                  >
+                    <Text fontSize="xl">{repo.name}</Text>
+                    <Text color="gray.600" fontSize="sm">{repo.description}</Text>
+                    <Text fontSize="sm">Stars: {repo.stargazers_count}</Text>
+                    <Text fontSize="sm">Forks: {repo.forks_count}</Text>
+                    <Text fontSize="sm">Open Issues: {repo.open_issues_count}</Text>
+               
+
+                  <button className="bg-white text-black hover:bg-slate-400 font-bold text-md py-2 px-2 rounded-lg transition duration-300 ease-in-out border-dotted border-2 border-black m-2"  onClick={() => handleClick(repo.name)} >View repository</button>
+                 
+                    {/* <button className="bg-white text-black hover:bg-slate-400 font-bold text-md py-2 px-2 rounded-lg transition duration-300 ease-in-out border-dotted border-2 border-black m-2" onClick={() => handleClick3(username,repo.name)}>View Commit History</button> */}
+
+                    <button className="bg-white text-black hover:bg-slate-400 font-bold text-md py-2 px-2 rounded-lg transition duration-300 ease-in-out border-dotted border-2 border-black m-2 " onClick={() => handleClick2(username,repo.name)}>View Contributors</button>
+                  </GridItem>
+                ))}
+              </Grid>
+            </Box>
+          )}
+        </>
+      )}
+    </Box>
   );
 }
+
+
 
 export default About;
